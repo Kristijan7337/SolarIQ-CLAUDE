@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SolarIQ v3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080f1e;
+  --bg2: #0d1a30;
+  --bg3: #122040;
+  --border: rgba(255,255,255,0.07);
+  --sun: #f5a623;
+  --sun2: #ffd166;
+  --green: #00e5b0;
+  --red: #ff5a5a;
+  --blue: #4a9eff;
+  --text: #e8f0fe;
+  --dim: #7a9bc8;
+  --card: rgba(13,26,48,0.9);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; }
+body::before { content:''; position:fixed; top:-30%; left:50%; transform:translateX(-50%); width:900px; height:900px; background:radial-gradient(circle,rgba(245,166,35,0.06) 0%,transparent 65%); pointer-events:none; z-index:0; }
+
+/* LAYOUT */
+.app { display:flex; min-height:100vh; position:relative; z-index:1; }
+.sidebar { width:220px; background:rgba(13,26,48,0.95); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh; z-index:50; transition:transform .3s; backdrop-filter:blur(20px); }
+.main { margin-left:220px; flex:1; min-width:0; }
+
+/* LOGO */
+.logo { display:flex; align-items:center; gap:10px; padding:20px 16px; border-bottom:1px solid var(--border); }
+.logo-icon { width:34px; height:34px; background:linear-gradient(135deg,var(--sun),var(--sun2)); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:17px; box-shadow:0 0 20px rgba(245,166,35,0.4); animation:pulse 3s ease-in-out infinite; flex-shrink:0; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 20px rgba(245,166,35,0.4)} 50%{box-shadow:0 0 35px rgba(245,166,35,0.7)} }
+.logo-text { font-weight:800; font-size:1.15rem; letter-spacing:-.02em; }
+.logo-sub { font-size:.65rem; color:var(--dim); font-family:'DM Mono',monospace; margin-top:1px; }
+
+/* NAV */
+nav { flex:1; padding:12px 8px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; cursor:pointer; font-size:.85rem; font-weight:600; color:var(--dim); transition:all .15s; margin-bottom:2px; border:1px solid transparent; }
+.nav-item:hover { color:var(--text); background:rgba(255,255,255,0.04); }
+.nav-item.active { color:var(--sun); background:rgba(245,166,35,0.1); border-color:rgba(245,166,35,0.2); }
+.nav-icon { font-size:16px; width:18px; text-align:center; }
+
+/* TOPBAR */
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:16px 28px; border-bottom:1px solid var(--border); background:rgba(8,15,30,0.8); backdrop-filter:blur(10px); position:sticky; top:0; z-index:10; }
+.topbar h1 { font-size:1.4rem; font-weight:800; letter-spacing:-.02em; }
+.month-nav { display:flex; align-items:center; gap:8px; }
+.month-btn { background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text); padding:6px 10px; border-radius:9px; cursor:pointer; font-size:14px; transition:all .15s; }
+.month-btn:hover { background:rgba(255,255,255,0.1); }
+.month-label { background:rgba(13,26,48,0.9); border:1px solid var(--border); padding:6px 16px; border-radius:9px; font-size:.85rem; font-weight:700; min-width:130px; text-align:center; text-transform:capitalize; }
+
+/* PAGES */
+.page { display:none; padding:24px 28px; }
+.page.active { display:block; }
+
+/* CARDS */
+.cards-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px; margin-bottom:20px; }
+.card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:18px; }
+.card-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; margin-bottom:12px; }
+.card-value { font-size:1.6rem; font-weight:800; letter-spacing:-.03em; line-height:1; }
+.card-label { font-size:.68rem; color:var(--dim); font-family:'DM Mono',monospace; margin-top:4px; letter-spacing:.04em; }
+.card-sub { font-size:.82rem; color:rgba(255,255,255,0.55); margin-top:8px; font-weight:500; }
+.icon-sun { background:rgba(245,166,35,0.12); color:var(--sun); }
+.icon-blue { background:rgba(74,158,255,0.12); color:var(--blue); }
+.icon-green { background:rgba(0,229,176,0.12); color:var(--green); }
+.icon-red { background:rgba(255,90,90,0.12); color:var(--red); }
+
+/* MINI CARDS */
+.mini-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+.mini-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
+.mini-label { font-size:.68rem; color:var(--dim); font-family:'DM Mono',monospace; margin-bottom:4px; }
+.mini-value { font-size:1.1rem; font-weight:700; }
+.mini-sub { font-size:.68rem; color:var(--dim); margin-top:3px; }
+
+/* CHART CARD */
+.chart-card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:20px; margin-bottom:20px; }
+.chart-header { margin-bottom:16px; }
+.chart-header h2 { font-size:1rem; font-weight:700; }
+.chart-header p { font-size:.72rem; color:var(--dim); font-family:'DM Mono',monospace; margin-top:2px; }
+.chart-wrap { position:relative; height:260px; }
+
+/* PIE GRID */
+.pie-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+
+/* UPLOAD ZONE */
+.upload-zone { border:2px dashed rgba(255,255,255,0.1); border-radius:18px; padding:40px; text-align:center; cursor:pointer; transition:all .2s; margin-bottom:16px; }
+.upload-zone:hover, .upload-zone.drag { border-color:var(--sun); background:rgba(245,166,35,0.05); }
+.upload-icon { font-size:2.5rem; margin-bottom:12px; }
+.upload-title { font-weight:700; margin-bottom:4px; }
+.upload-sub { font-size:.8rem; color:var(--dim); }
+
+/* FORM */
+.form-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+.form-group label { display:block; font-size:.7rem; color:var(--dim); font-family:'DM Mono',monospace; margin-bottom:5px; }
+.form-group input { width:100%; background:rgba(255,255,255,0.05); border:1px solid var(--border); border-radius:10px; padding:9px 12px; color:var(--text); font-family:'DM Mono',monospace; font-size:.85rem; outline:none; transition:border .15s; }
+.form-group input:focus { border-color:rgba(245,166,35,0.4); }
+.form-group input[type=month] { font-family:'Inter',sans-serif; }
+.form-section { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:20px; margin-bottom:16px; }
+.form-section h3 { font-size:.95rem; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border-radius:11px; font-family:'Inter',sans-serif; font-weight:700; font-size:.85rem; cursor:pointer; border:none; transition:all .15s; }
+.btn-primary { background:var(--sun); color:#080f1e; }
+.btn-primary:hover { background:var(--sun2); }
+.btn-secondary { background:rgba(255,255,255,0.06); color:var(--text); border:1px solid var(--border); }
+.btn-secondary:hover { background:rgba(255,255,255,0.1); }
+.btn-green { background:rgba(0,229,176,0.15); color:var(--green); border:1px solid rgba(0,229,176,0.2); }
+
+/* RESULTS */
+.result-item { display:flex; align-items:flex-start; gap:10px; padding:10px 14px; border-radius:12px; margin-bottom:6px; font-size:.82rem; }
+.result-ok { background:rgba(0,229,176,0.07); border:1px solid rgba(0,229,176,0.15); }
+.result-err { background:rgba(255,90,90,0.07); border:1px solid rgba(255,90,90,0.15); }
+
+/* BILL TABLE */
+.bill-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.bill-table th { text-align:left; font-size:.68rem; color:var(--dim); font-family:'DM Mono',monospace; padding:0 8px 10px 0; border-bottom:1px solid var(--border); }
+.bill-table td { padding:8px 8px 8px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+.bill-table tr:hover td { background:rgba(255,255,255,0.02); }
+.bill-section { background:rgba(245,166,35,0.06); }
+.bill-section td { font-size:.68rem; font-weight:800; color:var(--sun); text-transform:uppercase; letter-spacing:.08em; font-family:'DM Mono',monospace; padding:8px 0 4px; }
+.bill-bold td { font-weight:700; }
+.bill-neg td:last-child { color:var(--red); }
+.text-right { text-align:right; }
+.text-mono { font-family:'DM Mono',monospace; }
+
+/* SAVINGS BOX */
+.savings-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+.savings-card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; text-align:center; }
+.savings-card .val { font-size:1.8rem; font-weight:800; margin-bottom:4px; }
+.savings-card .lbl { font-size:.7rem; color:var(--dim); font-family:'DM Mono',monospace; }
+
+/* ANALIZA TABLE */
+.ana-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.ana-table th { text-align:left; font-size:.68rem; color:var(--dim); font-family:'DM Mono',monospace; padding:0 10px 10px 0; border-bottom:1px solid var(--border); }
+.ana-table td { padding:9px 10px 9px 0; border-bottom:1px solid rgba(255,255,255,0.03); font-family:'DM Mono',monospace; }
+.ana-table tr:hover td { background:rgba(255,255,255,0.02); }
+.badge { padding:2px 8px; border-radius:20px; font-size:.68rem; font-family:'DM Mono',monospace; display:inline-block; }
+.badge-g { background:rgba(0,229,176,0.12); color:var(--green); }
+.badge-y { background:rgba(245,166,35,0.12); color:var(--sun); }
+
+/* POSTAVKE */
+.settings-section { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:20px; margin-bottom:16px; }
+.settings-section h3 { font-size:.95rem; font-weight:700; margin-bottom:14px; }
+.settings-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+
+/* INFO BOX */
+.info-box { background:rgba(0,229,176,0.05); border:1px solid rgba(0,229,176,0.15); border-radius:12px; padding:12px 16px; font-size:.78rem; color:#a0c4b8; margin-bottom:14px; }
+.warn-box { background:rgba(245,166,35,0.05); border:1px solid rgba(245,166,35,0.15); border-radius:12px; padding:12px 16px; font-size:.78rem; color:#c4a870; margin-bottom:14px; }
+
+/* MOBILE */
+.hamburger { display:none; background:none; border:none; color:var(--text); font-size:22px; cursor:pointer; padding:4px; }
+.mobile-header { display:none; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); background:rgba(8,15,30,0.9); position:sticky; top:0; z-index:10; backdrop-filter:blur(10px); }
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:40; }
+
+@media(max-width:900px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .main { margin-left:0; }
+  .mobile-header { display:flex; }
+  .hamburger { display:block; }
+  .overlay.show { display:block; }
+  .cards-grid { grid-template-columns:repeat(2,1fr); }
+  .mini-grid { grid-template-columns:repeat(2,1fr); }
+  .pie-grid { grid-template-columns:1fr; }
+  .form-grid { grid-template-columns:1fr 1fr; }
+  .settings-grid { grid-template-columns:1fr 1fr; }
+  .savings-grid { grid-template-columns:1fr; }
+  .page { padding:16px; }
+  .topbar { display:none; }
+}
+@media(max-width:480px) {
+  .cards-grid { grid-template-columns:1fr 1fr; }
+  .mini-grid { grid-template-columns:1fr 1fr; }
+  .form-grid { grid-template-columns:1fr; }
+  .settings-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-icon">☀️</div>
+      <div>
+        <div class="logo-text">SolarIQ <span style="font-size:.7em;opacity:.6">v2</span></div>
+        <div class="logo-sub">analiza elektrane</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('analiza',this)"><span class="nav-icon">📈</span> Analiza</div>
+      <div class="nav-item" onclick="showPage('solar',this)"><span class="nav-icon">🌞</span> Solar</div>
+      <div class="nav-item" onclick="showPage('uvoz',this)"><span class="nav-icon">📂</span> Uvoz podataka</div>
+      <div class="nav-item" onclick="showPage('racun',this)"><span class="nav-icon">🧾</span> Račun</div>
+      <div class="nav-item" onclick="showPage('postavke',this)"><span class="nav-icon">⚙️</span> Postavke</div>
+    </nav>
+    <div style="padding:12px 16px;border-top:1px solid var(--border);font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace;">
+      <span id="db-status">● Učitavanje...</span><br><span id="sync-status" style="color:var(--dim)">⟳ Čekam server...</span>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- Mobile header -->
+    <div class="mobile-header">
+      <button class="hamburger" onclick="openSidebar()">☰</button>
+      <span style="font-weight:800;font-size:1.1rem">☀️ SolarIQ</span>
+      <span id="mobile-page-title" style="font-size:.8rem;color:var(--dim);margin-left:auto"></span>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <h1>Dashboard</h1>
+        <div class="month-nav">
+          <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+          <div class="month-label" id="month-label">—</div>
+          <button class="month-btn" onclick="changeMonth(1)">›</button>
+          <button class="month-btn" onclick="renderDashboard()" title="Osvježi">↻</button>
+        </div>
+      </div>
+      <div style="padding:24px 28px" id="dash-content">
+        <div class="cards-grid">
+          <!-- Solar stack kolona: 3 kartice jedna ispod druge -->
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="card" style="margin:0;padding:14px 16px;flex:1"><div class="card-icon icon-sun" style="width:28px;height:28px;font-size:13px;margin-bottom:8px">☀️</div><div class="card-value" style="font-size:1.2rem" id="kpi-prod">— kWh</div><div class="card-label">UKUPNO PROIZVEDENO</div><div class="card-sub" id="kpi-prod-sub">FusionSolar</div></div>
+            <div class="card" style="margin:0;padding:14px 16px;flex:1"><div class="card-icon icon-orange" style="width:28px;height:28px;font-size:13px;margin-bottom:8px">🔼</div><div class="card-value" style="font-size:1.2rem;color:var(--sun)" id="kpi-feed">— kWh</div><div class="card-label">PREDANO U MREŽU</div><div class="card-sub" id="kpi-feed-sub">HEP A−</div></div>
+            <div class="card" style="margin:0;padding:14px 16px;flex:1"><div class="card-icon icon-green" style="width:28px;height:28px;font-size:13px;margin-bottom:8px">⚡</div><div class="card-value" style="font-size:1.2rem;color:var(--green)" id="kpi-direct">— kWh</div><div class="card-label">DIREKTNO POTROŠENO</div><div class="card-sub" id="kpi-direct-sub">Solar → kuća</div></div>
+          </div>
+          <div class="card"><div class="card-icon icon-blue">⚡</div><div class="card-value" id="kpi-cons">— kWh</div><div class="card-label">PREUZETO IZ MREŽE</div><div class="card-sub">HEP mjerenje</div></div>
+          <div class="card"><div class="card-icon icon-red">💶</div><div class="card-value" id="kpi-bill">— €</div><div class="card-label">HEP RAČUN</div><div class="card-sub" id="kpi-savings" style="font-size:1rem;font-weight:700;color:var(--green);">— €</div><div class="card-sub" id="kpi-savings-sub" style="font-size:.75rem;margin-top:2px;">ušteda ovaj mjesec</div></div>
+          <div class="card"><div class="card-icon icon-orange">🔌</div><div class="card-value" id="kpi-no-solar">— €</div><div class="card-label">BEZ SOLARA</div><div class="card-sub" id="kpi-no-solar-sub">Ušteda: —</div></div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini-card"><div class="mini-label">PREDANO U MREŽU</div><div class="mini-value" id="mini-feed" style="color:var(--sun)">—</div><div class="mini-sub" id="mini-feed-save">ušteda: —</div></div>
+          <div class="mini-card"><div class="mini-label">DIREKTNO POTROŠENO</div><div class="mini-value" id="mini-direct" style="color:var(--green)">—</div><div class="mini-sub" id="mini-direct-save">ušteda: —</div></div>
+          <div class="mini-card"><div class="mini-label">VT POTROŠNJA</div><div class="mini-value" id="mini-vt">—</div><div class="mini-sub">@ 0,131 €/kWh</div></div>
+          <div class="mini-card"><div class="mini-label">NT POTROŠNJA</div><div class="mini-value" id="mini-nt">—</div><div class="mini-sub">@ 0,064 €/kWh</div></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header"><h2>Dnevna energija</h2><p>Proizvodnja i potrošnja po danu (kWh)</p></div>
+          <div class="chart-wrap"><canvas id="chart-daily"></canvas></div>
+        </div>
+        <div class="pie-grid">
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-header"><h2>Raspodjela proizvodnje</h2><p>Predano u mrežu vs direktno potrošeno</p></div>
+            <div class="chart-wrap" style="height:180px"><canvas id="chart-pie1"></canvas></div>
+          </div>
+          <div class="chart-card" style="margin-bottom:0">
+            <div class="chart-header"><h2>Porijeklo potrošnje</h2><p>Iz mreže vs iz solara</p></div>
+            <div class="chart-wrap" style="height:180px"><canvas id="chart-pie2"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALIZA -->
+    <div class="page" id="page-analiza">
+      <div class="topbar"><h1>Analiza</h1></div>
+      <div style="padding:24px 28px">
+        <div class="savings-grid" id="ana-totals"></div>
+        <div class="chart-card">
+          <div class="chart-header"><h2>Energija po mjesecima (kWh)</h2></div>
+          <div class="chart-wrap" style="height:260px"><canvas id="chart-monthly"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header"><h2>Financije po mjesecima (€)</h2><p>Račun, ušteda i simulacija bez solara</p></div>
+          <div class="chart-wrap" style="height:220px"><canvas id="chart-monthly-eur"></canvas></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="chart-header"><h2>Tablica po mjesecima</h2></div>
+          <div style="overflow-x:auto"><table class="ana-table" id="ana-table"><thead><tr><th>Mjesec</th><th>Proiz. HEP</th><th>Proiz. FS</th><th>Potrošnja</th><th>Predano</th><th>Direktno</th><th>Račun</th><th>Ušteda</th><th>Bez solara</th></tr></thead><tbody id="ana-tbody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOLAR -->
+    <div class="page" id="page-solar">
+      <div class="topbar">
+        <h1>🌞 Solar (Fusion Solar)</h1>
+        <div class="month-nav">
+          <button class="month-btn" onclick="fsMonthPrev()">‹</button>
+          <div class="month-label" id="fs-month-label">—</div>
+          <button class="month-btn" onclick="fsMonthNext()">›</button>
+        </div>
+      </div>
+      <div style="padding:24px 28px">
+
+        <!-- DNEVNI KPI BOXOVI -->
+        <div class="cards-grid" style="margin-bottom:14px">
+          <div class="card">
+            <div class="card-icon icon-sun">☀️</div>
+            <div class="card-value" id="fs-kpi-pv">—</div>
+            <div class="card-label">PV PRINOS</div>
+            <div class="card-sub" id="fs-kpi-pv-sub">Fusion Solar</div>
+          </div>
+          <div class="card">
+            <div class="card-icon icon-green">⚡</div>
+            <div class="card-value" id="fs-kpi-direct">—</div>
+            <div class="card-label">DIREKTNO POTROŠENO</div>
+            <div class="card-sub" id="fs-kpi-direct-sub">Solar → kuća</div>
+          </div>
+          <div class="card">
+            <div class="card-icon icon-blue">🔼</div>
+            <div class="card-value" id="fs-kpi-export">—</div>
+            <div class="card-label">PREDANO U MREŽU</div>
+            <div class="card-sub" id="fs-kpi-export-sub">Export</div>
+          </div>
+          <div class="card">
+            <div class="card-icon icon-red">🔽</div>
+            <div class="card-value" id="fs-kpi-import">—</div>
+            <div class="card-label">PRIMLJENO IZ MREŽE</div>
+            <div class="card-sub" id="fs-kpi-import-sub">Import</div>
+          </div>
+        </div>
+        <div class="mini-grid" style="margin-bottom:20px">
+          <div class="mini-card">
+            <div class="mini-label">SAMOPOKRIĆE</div>
+            <div class="mini-value" id="fs-mini-self">—</div>
+            <div class="mini-sub">% solarnog koji si potrošio</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-label">PEAK POWER</div>
+            <div class="mini-value" id="fs-mini-peak">—</div>
+            <div class="mini-sub">kW max</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-label">UKUPNA POTROŠNJA</div>
+            <div class="mini-value" id="fs-mini-cons">—</div>
+            <div class="mini-sub">kWh (kuća)</div>
+          </div>
+          <div class="mini-card">
+            <div class="mini-label">CO₂ UŠTEDA</div>
+            <div class="mini-value" id="fs-mini-co2">—</div>
+            <div class="mini-sub">tona</div>
+          </div>
+        </div>
+
+        <!-- DNEVNI GRAF -->
+        <div class="chart-card" style="margin-bottom:20px">
+          <div class="chart-header"><h2>Dnevna energija</h2><p>PV prinos, direktna potrošnja i predano u mrežu (kWh)</p></div>
+          <div class="chart-wrap" style="height:260px"><canvas id="chart-fs-daily"></canvas></div>
+        </div>
+
+        <div class="form-section">
+          <h3>📂 Uvoz Fusion Solar izvještaja (.xlsx)</h3>
+          <div class="info-box">Uvezi Plant Report iz Fusion Solar aplikacije. Automatski se izračunava direktna potrošnja i koeficijent neravnomjernosti VT/NT.</div>
+          <div class="upload-zone" id="fs-drop-zone" onclick="document.getElementById('fs-file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="handleFsDrop(event)">
+            <div class="upload-icon">☀️</div>
+            <div class="upload-title">Povuci i spusti Fusion Solar fajl ovdje</div>
+            <div class="upload-sub">ili klikni za odabir • Plant_Report_*.xlsx</div>
+          </div>
+          <input type="file" id="fs-file-input" multiple accept=".xlsx" style="display:none" onchange="handleFsFiles(this.files)">
+          <div id="fs-import-results"></div>
+        </div>
+        <div class="savings-grid" id="solar-totals"></div>
+        <div class="chart-card">
+          <div class="chart-header"><h2>Energija po mjesecima (kWh)</h2><p>Fusion Solar podaci</p></div>
+          <div class="chart-wrap" style="height:260px"><canvas id="chart-solar-monthly"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header"><h2>Usporedba HEP vs Fusion Solar</h2><p>Predano u mrežu (Export) i primljeno (Import)</p></div>
+          <div class="chart-wrap" style="height:220px"><canvas id="chart-solar-compare"></canvas></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:0">
+          <div class="chart-header"><h2>Tablica po mjesecima</h2></div>
+          <div style="overflow-x:auto"><table class="ana-table" id="solar-table"><thead><tr><th>Mjesec</th><th>PV Prinos</th><th>Direktno</th><th>Predano FS</th><th>Predano HEP</th><th>Razlika</th><th>Samopokriće</th><th>Koef. VT</th></tr></thead><tbody id="solar-tbody"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UVOZ -->
+    <div class="page" id="page-uvoz">
+      <div class="topbar"><h1>Uvoz podataka</h1></div>
+      <div style="padding:24px 28px">
+        <div class="form-section">
+          <h3>📂 HEP intervalski podaci (.xls)</h3>
+          <div class="info-box">Podaci se čitaju direktno iz fajla — nema uploada na internet. Aplikacija automatski prepoznaje je li fajl potrošnja (A+) ili proizvodnja (A-) i izračunava VT/NT prema rasporedu iz Postavki.</div>
+          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="handleDrop(event)">
+            <div class="upload-icon">📁</div>
+            <div class="upload-title">Povuci i spusti HEP fajlove ovdje</div>
+            <div class="upload-sub">ili klikni za odabir • .xls fajlovi iz HEP e-Kupca</div>
+          </div>
+          <input type="file" id="file-input" multiple accept=".xls,.csv,.txt" style="display:none" onchange="handleFiles(this.files)">
+          <div id="import-results"></div>
+        </div>
+
+        <div class="form-section">
+          <h3>🌞 FusionSolar — ručni unos</h3>
+          <p style="font-size:.8rem;color:var(--dim);margin-bottom:12px">Ili koristi <b>Solar tab</b> za automatski uvoz iz xlsx fajla.</p>
+          <div class="warn-box">Unesi podatke iz FusionSolar aplikacije za svaki mjesec. Ovo je jedino što aplikacija ne može automatski izračunati jer HEP ne mjeri direktnu potrošnju iz solara.</div>
+          <div class="form-grid">
+            <div class="form-group"><label>MJESEC</label><input type="month" id="fs-month"></div>
+            <div class="form-group"><label>UKUPNO PROIZVEDENO (kWh)</label><input type="number" id="fs-total" step="0.01" placeholder="npr. 350.5"></div>
+            <div class="form-group"><label>DIREKTNO POTROŠENO (kWh)</label><input type="number" id="fs-direct" step="0.01" placeholder="npr. 145.2"></div>
+            <div class="form-group"><label>PREDANO U MREŽU (kWh)</label><input type="number" id="fs-feed" step="0.01" placeholder="npr. 205.3"></div>
+            <div class="form-group"><label>NAPOMENA</label><input type="text" id="fs-note" placeholder="npr. iz app 15.02.2026"></div>
+          </div>
+          <button class="btn btn-primary" onclick="saveFusionSolar()">💾 Spremi FusionSolar podatke</button>
+          <span id="fs-saved" style="display:none;color:var(--green);margin-left:12px;font-size:.85rem">✓ Spremljeno!</span>
+        </div>
+
+        <div class="form-section">
+          <h3>📋 Pregled uvezenih podataka</h3>
+          <div id="import-overview" style="font-size:.82rem;color:var(--dim)">Učitavanje...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RAČUN -->
+    <div class="page" id="page-racun">
+      <div class="topbar">
+        <h1>Račun</h1>
+        <div class="month-nav">
+          <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+          <div class="month-label" id="month-label-2">—</div>
+          <button class="month-btn" onclick="changeMonth(1)">›</button>
+        </div>
+      </div>
+      <div style="padding:24px 28px">
+        <div class="savings-grid" id="bill-summary"></div>
+        <div class="chart-card">
+          <div class="chart-header"><h2>🧾 Detaljni obračun</h2><p>Izračunato prema HEP HEPI Bijeli tarifnom modelu</p></div>
+          <div style="overflow-x:auto"><table class="bill-table" id="bill-table">
+            <thead><tr><th>Stavka</th><th class="text-right">Količina</th><th class="text-right">€/kWh</th><th class="text-right">Iznos €</th></tr></thead>
+            <tbody id="bill-tbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POSTAVKE -->
+    <div class="page" id="page-postavke">
+      <div class="topbar"><h1>Postavke</h1></div>
+      <div style="padding:24px 28px">
+        <div class="warn-box">⚠️ Tarife su postavljene prema HEP HEPI Bijeli računu za 1/2026. Ažuriraj ih ako dobiješ račun s drugačijim cijenama.</div>
+
+        <div class="settings-section">
+          <h3>Tarife opskrbe (€/kWh)</h3>
+          <div class="settings-grid">
+            <div class="form-group"><label>VIŠA TARIFA (VT)</label><input type="number" id="s-tariff-vt" step="0.000001"></div>
+            <div class="form-group"><label>NIŽA TARIFA (NT)</label><input type="number" id="s-tariff-nt" step="0.000001"></div>
+            <div class="form-group"><label>SOLIDARNA NAKNADA</label><input type="number" id="s-solidarna" step="0.000001"></div>
+            <div class="form-group"><label>OIE NAKNADA</label><input type="number" id="s-oie" step="0.000001"></div>
+            <div class="form-group"><label>OPSKRBNA NAKNADA (€/mj)</label><input type="number" id="s-opskrba" step="0.001"></div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Tarife mreže (€/kWh)</h3>
+          <div class="settings-grid">
+            <div class="form-group"><label>DISTRIBUCIJA VT</label><input type="number" id="s-distrib-vt" step="0.000001"></div>
+            <div class="form-group"><label>DISTRIBUCIJA NT</label><input type="number" id="s-distrib-nt" step="0.000001"></div>
+            <div class="form-group"><label>PRIJENOS VT</label><input type="number" id="s-prij-vt" step="0.000001"></div>
+            <div class="form-group"><label>PRIJENOS NT</label><input type="number" id="s-prij-nt" step="0.000001"></div>
+            <div class="form-group"><label>NAKNADA MJERNA USLUGA (€/mj)</label><input type="number" id="s-mjerna" step="0.001"></div>
+            <div class="form-group"><label>PDV STOPA (0.13 = 13%)</label><input type="number" id="s-pdv" step="0.01"></div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Elektrana i VT/NT raspored</h3>
+          <div class="settings-grid">
+            <div class="form-group"><label>SNAGA ELEKTRANE (kWp)</label><input type="number" id="s-kwp" step="0.1"></div>
+            <div class="form-group"><label>GODINA INSTALACIJE</label><input type="number" id="s-year" step="1"></div>
+            <div class="form-group"><label>CIJENA INSTALACIJE (€)</label><input type="number" id="s-cost" step="100"></div>
+            <div class="form-group"><label>VT SATI RADNIM DANOM</label><input type="text" id="s-vt-week" placeholder="07:00-21:00"></div>
+            <div class="form-group"><label>VT SATI VIKEND</label><input type="text" id="s-vt-wknd" placeholder="07:00-13:00"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Spremi postavke</button>
+        <span id="settings-saved" style="display:none;color:var(--green);margin-left:12px;font-size:.85rem">✓ Spremljeno! Preračunavanjem VT/NT...</span>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ============================================================
+// STORAGE
+// ============================================================
+const DB = {
+  get(key, def=null) {
+    try { const v = localStorage.getItem('solariq_'+key); return v ? JSON.parse(v) : def; } catch { return def; }
+  },
+  set(key, val) {
+    try { localStorage.setItem('solariq_'+key, JSON.stringify(val)); } catch(e) { console.error(e); }
+  }
+};
+
+// ============================================================
+// DEFAULT SETTINGS (HEP HEPI Bijeli, 1/2026)
+// ============================================================
+// Tarife po razdobljima
+// HEP ima dvije tarife: ispod praga (subvencionirana) i iznad praga
+// Prag: 3000 kWh / 6 mjeseci (500 kWh/mj VT + ~417 kWh/mj NT aprox)
+// Od 1.1.2026 prag je ukinut - sve po jednoj (višoj) cijeni
+const TARIFF_PERIODS = [
+  {
+    // Od 1.1.2026 nadalje - jedna tarifa
+    from: '2026-01',
+    tariff_vt1: 0.131205, tariff_vt_threshold: 99999, // nema praga
+    tariff_nt1: 0.064379, tariff_nt_threshold: 99999,
+    tariff_solidarna: 0.003982, solidarna_popust: true, // neto 0
+    tariff_oie: 0.013239,
+    tariff_opskrba: 0.982,
+    tariff_distrib_vt: 0.044446, tariff_distrib_nt: 0.020514,
+    tariff_prij_vt: 0.021256, tariff_prij_nt: 0.008175,
+    tariff_mjerna: 1.983,
+  },
+  {
+    // Do 31.12.2025 - dvije tarife s pragom
+    from: '2000-01',
+    tariff_vt1: 0.097189, tariff_vt2: 0.131205, tariff_vt_threshold: 613,
+    tariff_nt1: 0.047688, tariff_nt2: 0.064379, tariff_nt_threshold: 519,
+    tariff_solidarna: 0.003982, solidarna_popust: true, // neto 0
+    tariff_oie: 0.013239,
+    tariff_opskrba: 0.982,
+    tariff_distrib_vt: 0.038649, tariff_distrib_nt: 0.017838,
+    tariff_prij_vt: 0.019324, tariff_prij_nt: 0.007432,
+    tariff_mjerna: 1.724,
+  }
+];
+
+const DEFAULT_SETTINGS = {
+  pdv_rate: 0.13,
+  kwp: 10, install_year: 2024, install_cost: 8000,
+  vt_weekday: '07:00-21:00', vt_weekend: '07:00-13:00'
+};
+
+function getTariffForMonth(ym) {
+  // Nađi odgovarajuće tarife za mjesec
+  for(const t of TARIFF_PERIODS) {
+    if(ym >= t.from) return t;
+  }
+  return TARIFF_PERIODS[0];
+}
+
+function getSettings() {
+  return { ...DEFAULT_SETTINGS, ...DB.get('settings', {}) };
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let currentMonth = new Date().toISOString().slice(0,7);
+let chartDaily=null, chartPie1=null, chartPie2=null, chartMonthly=null, chartMonthlyEur=null;
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  document.getElementById('mobile-page-title').textContent = el ? el.textContent.trim() : '';
+  closeSidebar();
+  if(id==='dashboard') renderDashboard();
+  if(id==='analiza') renderAnaliza();
+  if(id==='solar') { renderFsDaily(); renderSolar(); }
+  if(id==='racun') renderRacun();
+  if(id==='uvoz') renderImportOverview();
+  if(id==='postavke') loadSettings();
+}
+
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function changeMonth(dir) {
+  const d = new Date(currentMonth+'-01');
+  d.setMonth(d.getMonth()+dir);
+  currentMonth = d.toISOString().slice(0,7);
+  renderDashboard();
+  renderRacun();
+}
+
+// ============================================================
+// HEP FILE PARSER
+// ============================================================
+function dragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag'); }
+function dragLeave(e) { document.getElementById('drop-zone').classList.remove('drag'); }
+function handleDrop(e) { e.preventDefault(); dragLeave(e); handleFiles(e.dataTransfer.files); }
+
+function handleFiles(files) {
+  const results = document.getElementById('import-results');
+  results.innerHTML = '';
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const content = e.target.result;
+      const res = parseAndSaveHepFile(content, file.name);
+      const div = document.createElement('div');
+      div.className = 'result-item ' + (res.success ? 'result-ok' : 'result-err');
+      div.innerHTML = `<span>${res.success?'✓':'✗'}</span><div><strong style="font-family:'DM Mono',monospace;font-size:.8rem">${file.name}</strong><br><span style="color:var(--dim);font-size:.75rem">${res.message}</span></div>`;
+      results.appendChild(div);
+      renderImportOverview();
+      if(res.success) renderDashboard();
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+function parseAndSaveHepFile(content, filename) {
+  const lines = content.split('\n').filter(l=>l.trim());
+  if(lines.length < 2) return { success:false, message:'Prazan fajl' };
+
+  let type = null;
+  if(content.includes('A-_T0')) type = 'production';
+  else if(content.includes('A+_T0')) type = 'consumption';
+  if(!type) return { success:false, message:'Nepoznati format (nije HEP interval fajl)' };
+
+  const s = getSettings();
+  const dataLines = lines.slice(1);
+  let imported=0, skipped=0, minDate='', maxDate='';
+
+  // Load existing intervals
+  const now = new Date();
+  const tekuciMjesec = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  
+  const intervals = DB.get('intervals', []);
+  // Za tekući mjesec - overwriteaj postojeće intervale
+  const filteredIntervals = intervals.filter(r => {
+    const ym = r.date ? r.date.substring(0,7) : '';
+    return ym !== tekuciMjesec || r.type !== type;
+  });
+  const existingKeys = new Set(filteredIntervals.map(r=>`${r.datetime}_${r.type}`));
+
+  const newRows = [];
+  for(const line of dataLines) {
+    const cols = line.trim().split('\t').map(c=>c.trim());
+    if(cols.length < 8) { skipped++; continue; }
+    const datumStr = cols[1];
+    const vrijemeStr = cols[2];
+    const dateParts = datumStr.split('.');
+    if(dateParts.length !== 3) { skipped++; continue; }
+    const date = `${dateParts[2]}-${dateParts[1].padStart(2,'0')}-${dateParts[0].padStart(2,'0')}`;
+    const powerKw = parseFloat(cols[6].replace(',','.')) || 0;
+    const energyKwh = parseFloat(cols[7].replace(',','.')) || 0;
+    // HEP bilježi zadnji interval 23:45 kao 00:00:00 sljedećeg dana s energijom 0 - preskoči ga
+    if((vrijemeStr === '0:00:00' || vrijemeStr === '00:00:00') && energyKwh === 0) { skipped++; continue; }
+    const datetime = `${date} ${vrijemeStr}`;
+    const key = `${datetime}_${type}`;
+    if(existingKeys.has(key)) { skipped++; continue; }
+    if(!minDate||date<minDate) minDate=date;
+    if(!maxDate||date>maxDate) maxDate=date;
+    newRows.push({date, time:vrijemeStr, datetime, powerKw, energyKwh, type});
+    existingKeys.add(key);
+    imported++;
+  }
+
+  const allIntervals = [...filteredIntervals, ...newRows];
+  DB.set('intervals', allIntervals);
+
+  // Recalculate VT/NT for affected months
+  recalcVtNt();
+
+  return {
+    success: true,
+    message: `Tip: ${type==='production'?'Proizvodnja':'Potrošnja'} • Uvezeno: ${imported} • Preskočeno: ${skipped}${minDate?' • '+minDate+' → '+maxDate:''}`
+  };
+}
+
+// ============================================================
+// VT/NT CALCULATION
+// ============================================================
+function isVT(dateStr, timeStr) {
+  const s = getSettings();
+  const d = new Date(`${dateStr}T${timeStr}`);
+  const range = s.vt_weekday;
+  const [start,end] = range.split('-');
+  const [sh,sm] = start.split(':').map(Number);
+  const [eh,em] = end.split(':').map(Number);
+  const cur = d.getHours()*60+d.getMinutes();
+  return cur >= sh*60+sm && cur < eh*60+em;
+}
+
+function recalcVtNt() {
+  const intervals = DB.get('intervals', []);
+  const bills = DB.get('bills', {});
+
+  // Group by month
+  const byMonth = {};
+  for(const r of intervals) {
+    const ym = r.date.slice(0,7);
+    if(!byMonth[ym]) byMonth[ym] = {cVT:0,cNT:0,pVT:0,pNT:0};
+    const vt = isVT(r.date, r.time);
+    if(r.type==='consumption') { if(vt) byMonth[ym].cVT+=r.energyKwh; else byMonth[ym].cNT+=r.energyKwh; }
+    if(r.type==='production')  { if(vt) byMonth[ym].pVT+=r.energyKwh; else byMonth[ym].pNT+=r.energyKwh; }
+  }
+
+  // Update bills (preserve any manual overrides we don't have)
+  for(const [ym, data] of Object.entries(byMonth)) {
+    bills[ym] = { ...(bills[ym]||{}), consumptionVT:data.cVT, consumptionNT:data.cNT, productionVT:data.pVT, productionNT:data.pNT };
+  }
+  DB.set('bills', bills);
+}
+
+// ============================================================
+// FINANCIAL CALCULATIONS
+// ============================================================
+function calcOpskrbaKwh(kwh, t1, t2, threshold) {
+  // Izračun opskrbe s pragom (threshold)
+  // Ispod praga: t1, iznad praga: t2
+  if(!t2 || threshold >= 99999) return kwh * t1; // nema praga
+  const below = Math.min(kwh, threshold);
+  const above = Math.max(0, kwh - threshold);
+  return below * t1 + above * t2;
+}
+
+function calcBill(vt, nt, pVT, pNT, ym, directKwh=0) {
+  const s = getSettings();
+  const t = getTariffForMonth(ym || currentMonth);
+
+  // HEP metoda netiranja:
+  // - Opskrba se računa na neto kWh (potrošnja - produkcija)
+  // - Višak produkcije (negativni neto) vraća se po 0.8 x tarifa VT kao kredit
+  // - Mrežarina, distribucija, OIE, solidarna - uvijek na PUNOJ potrošnji
+  const netVT = vt - pVT;
+  const netNT = nt - pNT;
+
+  // Opskrba - neto kWh, višak se kreditira po 0.8 x tarifa
+  let opskrbaVT_raw, opskrbaNT_raw;
+  if (netVT >= 0) {
+    opskrbaVT_raw = calcOpskrbaKwh(netVT, t.tariff_vt1, t.tariff_vt2, t.tariff_vt_threshold);
+  } else {
+    opskrbaVT_raw = netVT * 0.8 * t.tariff_vt1;
+  }
+  if (netNT >= 0) {
+    opskrbaNT_raw = calcOpskrbaKwh(netNT, t.tariff_nt1, t.tariff_nt2, t.tariff_nt_threshold);
+  } else {
+    opskrbaNT_raw = netNT * 0.8 * t.tariff_nt1;
+  }
+
+  // Solidarna i OIE - na NETO kWh
+  const netTotal = Math.max(0, netVT) + Math.max(0, netNT);
+  const solidarna = t.solidarna_popust ? 0 : netTotal * t.tariff_solidarna;
+  const oie = netTotal * t.tariff_oie;
+
+  const popustVT = pVT * (t.tariff_vt2 || t.tariff_vt1);
+  const popustNT = pNT * (t.tariff_nt2 || t.tariff_nt1);
+
+  const opskrba = opskrbaVT_raw + opskrbaNT_raw + solidarna + oie + t.tariff_opskrba;
+
+  // Mreža - na NETO kWh (kao i opskrba)
+  const netVTmreza = Math.max(0, netVT);
+  const netNTmreza = Math.max(0, netNT);
+  const mreza = netVTmreza*(t.tariff_distrib_vt+t.tariff_prij_vt) + netNTmreza*(t.tariff_distrib_nt+t.tariff_prij_nt) + t.tariff_mjerna;
+
+  const subtotal = opskrba + mreza;
+  const pdv      = subtotal * s.pdv_rate;
+  const total    = subtotal + pdv;
+
+  // Ušteda od netiranja (razlika s/bez solara s PDV)
+  const feedSave = (popustVT + popustNT) * (1 + s.pdv_rate);
+
+  // Bez solara - puna potrošnja bez netiranja + direktna potrošnja (kao da solar ne postoji)
+  const nosVT = vt + directKwh, nosNT = nt; // direktna u VT (dnevna potrošnja)
+  const nosOpskrba = calcOpskrbaKwh(nosVT, t.tariff_vt1, t.tariff_vt2, t.tariff_vt_threshold)
+                   + calcOpskrbaKwh(nosNT, t.tariff_nt1, t.tariff_nt2, t.tariff_nt_threshold)
+                   + (t.solidarna_popust ? 0 : (nosVT+nosNT)*t.tariff_solidarna)
+                   + (nosVT+nosNT)*t.tariff_oie + t.tariff_opskrba;
+  const nosMreza = nosVT*(t.tariff_distrib_vt+t.tariff_prij_vt) + nosNT*(t.tariff_distrib_nt+t.tariff_prij_nt) + t.tariff_mjerna;
+  const noTotal  = (nosOpskrba + nosMreza) * (1 + s.pdv_rate);
+
+  return { opskrba, mreza, subtotal, pdv, total, feedSave, noTotal, popustVT, popustNT,
+           opskrbaVT: opskrbaVT_raw, opskrbaNT: opskrbaNT_raw, solidarna, oie, t,
+           netVT, netNT };
+}
+
+function calcDirectSave(directKwh, vtRatio, ym) {
+  const s = getSettings();
+  const t = getTariffForMonth(ym || currentMonth);
+  if(directKwh<=0) return 0;
+  const vtK = directKwh*vtRatio, ntK = directKwh*(1-vtRatio);
+  // Koristi višu tarifu za direktnu uštedu (konzervativna procjena)
+  const vtRate = t.tariff_vt2 || t.tariff_vt1;
+  const ntRate = t.tariff_nt2 || t.tariff_nt1;
+  const solidarna = t.solidarna_popust ? 0 : t.tariff_solidarna;
+  const base = vtK*(vtRate + solidarna + t.tariff_oie + t.tariff_distrib_vt + t.tariff_prij_vt)
+             + ntK*(ntRate + solidarna + t.tariff_oie + t.tariff_distrib_nt + t.tariff_prij_nt);
+  return base*(1+s.pdv_rate);
+}
+
+function getMonthData(ym) {
+  const intervals = DB.get('intervals', []);
+  const bills = DB.get('bills', {});
+  const fs = DB.get('fusionsolar', {});
+  const bill = bills[ym] || {};
+  const fsData = fs[ym] || {};
+
+  // Daily data for chart
+  const dailyMap = {};
+  for(const r of intervals) {
+    if(!r.date.startsWith(ym)) continue;
+    if(!dailyMap[r.date]) dailyMap[r.date] = {prod:0,cons:0};
+    if(r.type==='production') dailyMap[r.date].prod += r.energyKwh;
+    if(r.type==='consumption') dailyMap[r.date].cons += r.energyKwh;
+  }
+
+  const vt = bill.consumptionVT||0, nt = bill.consumptionNT||0;
+  const pVT = bill.productionVT||0, pNT = bill.productionNT||0;
+  const hepFeed = pVT+pNT;
+  const fsTotal = fsData.productionTotal||0;
+  const fsDirect = fsData.directConsumption||0;
+  const directKwh = fsTotal>0 ? Math.max(0, fsTotal-hepFeed) : fsDirect;
+  const vtRatio = (vt+nt)>0 ? vt/(vt+nt) : 0.6;
+  const calc = calcBill(vt,nt,pVT,pNT,ym,directKwh);
+  const directSave = calcDirectSave(directKwh, vtRatio, ym);
+  const totalSave = calc.feedSave + directSave;
+
+  // Total consumed (from grid + direct solar)
+  const totalCons = (vt+nt) + directKwh;
+
+  return {
+    ym, vt, nt, pVT, pNT, hepFeed,
+    hepProd: hepFeed, hepCons: vt+nt,
+    fsTotal, fsDirect, directKwh, vtRatio,
+    calc, directSave, totalSave, totalCons,
+    dailyMap, fsData
+  };
+}
+
+// ============================================================
+// DASHBOARD RENDER
+// ============================================================
+const MONTHS_HR = ['Siječanj','Veljača','Ožujak','Travanj','Svibanj','Lipanj','Srpanj','Kolovoz','Rujan','Listopad','Studeni','Prosinac'];
+
+function renderDashboard() {
+  const d = getMonthData(currentMonth);
+  const [y,m] = currentMonth.split('-');
+  const label = `${MONTHS_HR[parseInt(m)-1]} ${y}`;
+  document.getElementById('month-label').textContent = label;
+  document.getElementById('month-label-2').textContent = label;
+
+  const fmtK = v => v.toFixed(1)+' kWh';
+  const fmtE = v => v.toFixed(2)+' €';
+
+  document.getElementById('kpi-prod').textContent = fmtK(d.fsTotal||d.hepProd);
+  document.getElementById('kpi-prod-sub').textContent = d.fsTotal>0 ? 'FusionSolar' : 'HEP (predano u mrežu)';
+  document.getElementById('kpi-cons').textContent = fmtK(d.hepCons);
+  document.getElementById('kpi-bill').textContent = fmtE(d.calc.total);
+  document.getElementById('kpi-savings').textContent = d.totalSave>0 ? `+ ${fmtE(d.totalSave)}` : '—';
+  document.getElementById('kpi-savings-sub').textContent = d.calc.noTotal>0 ? `${((d.totalSave/d.calc.noTotal)*100).toFixed(0)}% od računa bez solara` : 'ušteda ovaj mjesec';
+  document.getElementById('kpi-no-solar').textContent = d.calc.noTotal>0 ? fmtE(d.calc.noTotal) : '— €';
+  document.getElementById('kpi-no-solar-sub').textContent = d.calc.noTotal>0 ? `${fmtE(d.calc.noTotal - d.calc.total)} manje s photovoltaics` : '—';
+  document.getElementById('mini-feed').textContent = fmtK(d.hepFeed);
+  document.getElementById('mini-feed-save').textContent = `ušteda: ${fmtE(d.calc.feedSave)}`;
+  document.getElementById('mini-direct').textContent = fmtK(d.directKwh);
+  document.getElementById('mini-direct-save').textContent = d.directKwh>0 ? `ušteda: ${fmtE(d.directSave)}` : 'unesi FusionSolar podatke';
+  // Novi KPI stack cardovi
+  document.getElementById('kpi-feed').textContent = fmtK(d.hepFeed);
+  document.getElementById('kpi-feed-sub').textContent = d.calc.feedSave>0 ? `ušteda: ${fmtE(d.calc.feedSave)}` : 'HEP A−';
+  document.getElementById('kpi-direct').textContent = d.directKwh>0 ? fmtK(d.directKwh) : '— kWh';
+  document.getElementById('kpi-direct-sub').textContent = d.directKwh>0 ? `ušteda: ${fmtE(d.directSave)}` : 'unesi FusionSolar';
+  document.getElementById('mini-vt').textContent = fmtK(d.vt);
+  document.getElementById('mini-nt').textContent = fmtK(d.nt);
+
+  // Daily chart
+  const days = Object.keys(d.dailyMap).sort();
+  const prodData = days.map(dd=>d.dailyMap[dd].prod);
+  const consData = days.map(dd=>d.dailyMap[dd].cons);
+  const labels = days.map(dd=>dd.slice(-2));
+
+  if(chartDaily) chartDaily.destroy();
+  chartDaily = new Chart(document.getElementById('chart-daily'), {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Proizvodnja',data:prodData,backgroundColor:'rgba(245,166,35,0.8)',borderRadius:4,maxBarThickness:14},
+        {label:'Potrošnja',data:consData,backgroundColor:'rgba(30,58,110,0.8)',borderRadius:4,maxBarThickness:14}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a9bc8',font:{family:'DM Mono',size:11}}}},scales:{x:{ticks:{color:'#7a9bc8',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#7a9bc8',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+
+  // Pie 1 - production split
+  if(chartPie1) chartPie1.destroy();
+  const p1data = [Math.max(0,d.hepFeed), Math.max(0,d.directKwh)];
+  chartPie1 = new Chart(document.getElementById('chart-pie1'), {
+    type:'doughnut',
+    data:{labels:['Predano u mrežu','Direktno potrošeno'],datasets:[{data:p1data,backgroundColor:['rgba(245,166,35,0.85)','rgba(0,229,176,0.85)'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#7a9bc8',font:{family:'DM Mono',size:11},padding:12}}}}
+  });
+
+  // Pie 2 - consumption origin
+  if(chartPie2) chartPie2.destroy();
+  const p2data = [Math.max(0,d.hepCons), Math.max(0,d.directKwh)];
+  chartPie2 = new Chart(document.getElementById('chart-pie2'), {
+    type:'doughnut',
+    data:{labels:['Iz mreže','Iz solara'],datasets:[{data:p2data,backgroundColor:['rgba(30,58,110,0.85)','rgba(245,166,35,0.85)'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#7a9bc8',font:{family:'DM Mono',size:11},padding:12}}}}
+  });
+
+  document.getElementById('db-status').innerHTML = `● ${Object.keys(DB.get('bills',{})).length} mj. podataka`;
+}
+
+// ============================================================
+// ANALIZA RENDER
+// ============================================================
+function renderAnaliza() {
+  const bills = DB.get('bills', {});
+  const months = Object.keys(bills).sort().reverse();
+
+  if(months.length===0) {
+    document.getElementById('ana-tbody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--dim);padding:24px">Nema podataka — uvezi HEP fajlove</td></tr>';
+    return;
+  }
+
+  // Totals
+  let totSave=0, totProd=0, totCons=0;
+  const allData = months.map(ym=>{ const d=getMonthData(ym); totSave+=d.totalSave; totProd+=d.fsTotal||d.hepProd; totCons+=d.hepCons; return d; });
+  document.getElementById('ana-totals').innerHTML = `
+    <div class="savings-card"><div class="val" style="color:var(--green)">${totSave.toFixed(2)} €</div><div class="lbl">UKUPNO UŠTEDENO</div></div>
+    <div class="savings-card"><div class="val" style="color:var(--sun)">${totProd.toFixed(0)} kWh</div><div class="lbl">UKUPNO PROIZVEDENO</div></div>
+    <div class="savings-card"><div class="val">${totCons.toFixed(0)} kWh</div><div class="lbl">UKUPNO PREUZETO IZ MREŽE</div></div>
+  `;
+
+  // Monthly bar chart
+  const labels = allData.map(d=>{const[y,m]=d.ym.split('-');return MONTHS_HR[parseInt(m)-1].slice(0,3)+' '+y.slice(2);}).reverse();
+  const prodArr = allData.map(d=>parseFloat((d.fsTotal||d.hepProd).toFixed(1))).reverse();
+  const consArr = allData.map(d=>parseFloat(d.hepCons.toFixed(1))).reverse();
+  const feedArr = allData.map(d=>parseFloat(d.hepFeed.toFixed(1))).reverse();
+
+  if(chartMonthly) chartMonthly.destroy();
+  chartMonthly = new Chart(document.getElementById('chart-monthly'), {
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Potrošnja (HEP)',data:consArr,backgroundColor:'rgba(30,58,110,0.8)',borderRadius:4,maxBarThickness:24},
+      {label:'Predano u mrežu',data:feedArr,backgroundColor:'rgba(245,166,35,0.8)',borderRadius:4,maxBarThickness:24},
+      {label:'Ukupno proiz. (FS)',data:prodArr,backgroundColor:'rgba(0,229,176,0.5)',borderRadius:4,maxBarThickness:24}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a9bc8',font:{family:'DM Mono',size:11}}}},scales:{x:{ticks:{color:'#7a9bc8',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#7a9bc8',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+
+  // EUR chart
+  const billArr = allData.map(d=>parseFloat(d.calc.total.toFixed(2))).reverse();
+  const saveArr = allData.map(d=>parseFloat(d.totalSave.toFixed(2))).reverse();
+  const noSolarArr = allData.map(d=>parseFloat(d.calc.noTotal.toFixed(2))).reverse();
+
+  if(chartMonthlyEur) chartMonthlyEur.destroy();
+  chartMonthlyEur = new Chart(document.getElementById('chart-monthly-eur'), {
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Račun sa solarom',data:billArr,backgroundColor:'rgba(255,90,90,0.7)',borderRadius:4,maxBarThickness:24},
+      {label:'Ušteda',data:saveArr,backgroundColor:'rgba(0,229,176,0.7)',borderRadius:4,maxBarThickness:24},
+      {label:'Bez solara',data:noSolarArr,type:'line',borderColor:'rgba(245,166,35,0.7)',backgroundColor:'transparent',pointBackgroundColor:'rgba(245,166,35,0.7)',tension:0.3,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7a9bc8',font:{family:'DM Mono',size:11}}}},scales:{x:{ticks:{color:'#7a9bc8',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#7a9bc8',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
+
+  // Table
+  const tbody = document.getElementById('ana-tbody');
+  tbody.innerHTML = allData.map(d=>`
+    <tr>
+      <td style="font-weight:700">${d.ym}</td>
+      <td>${d.hepProd.toFixed(1)}</td>
+      <td>${d.fsTotal>0?d.fsTotal.toFixed(1):'—'}</td>
+      <td>${d.hepCons.toFixed(1)}</td>
+      <td>${d.hepFeed.toFixed(1)}</td>
+      <td>${d.directKwh>0?d.directKwh.toFixed(1):'—'}</td>
+      <td>${d.calc.total.toFixed(2)} €</td>
+      <td><span class="badge badge-g">${d.totalSave.toFixed(2)} €</span></td>
+      <td style="color:var(--dim)">${d.calc.noTotal.toFixed(2)} €</td>
+    </tr>
+  `).join('');
+}
+
+// ============================================================
+// RAČUN RENDER
+// ============================================================
+function renderRacun() {
+  const d = getMonthData(currentMonth);
+  const c = d.calc;
+  const s = getSettings();
+
+  document.getElementById('bill-summary').innerHTML = `
+    <div class="savings-card"><div class="val" style="color:var(--sun)">${c.total.toFixed(2)} €</div><div class="lbl">RAČUN SA SOLAROM</div></div>
+    <div class="savings-card"><div class="val" style="color:var(--red)">${c.noTotal.toFixed(2)} €</div><div class="lbl">BEZ SOLARA</div></div>
+    <div class="savings-card"><div class="val" style="color:var(--green)">${(c.noTotal-c.total).toFixed(2)} €</div><div class="lbl">UŠTEDA OVAJ MJESEC</div></div>
+  `;
+
+  const t = c.t; // tariff period
+  const R = (label,qty,rate,eur,cls='') => `<tr class="${cls}"><td>${label}</td><td class="text-right text-mono">${qty||''}</td><td class="text-right text-mono">${rate||''}</td><td class="text-right text-mono">${eur!=null?eur.toFixed(4)+' €':''}</td></tr>`;
+  const SEC = label => `<tr class="bill-section"><td colspan="4">${label}</td></tr>`;
+  const BOLD = (label,eur) => `<tr class="bill-bold"><td>${label}</td><td colspan="2"></td><td class="text-right text-mono" style="color:var(--sun)">${eur.toFixed(2)} €</td></tr>`;
+
+  // NETO VT/NT — HEP prvo netira po tarifi, onda naplaćuje neto kWh
+  const netVT = c.netVT !== undefined ? c.netVT : Math.max(0, d.vt - d.pVT);
+  const netNT = c.netNT !== undefined ? c.netNT : Math.max(0, d.nt - d.pNT);
+
+  let vtRows = '';
+  if(t.tariff_vt_threshold < 99999) {
+    const below = Math.min(netVT, t.tariff_vt_threshold);
+    const above = Math.max(0, netVT - t.tariff_vt_threshold);
+    if(below>0) vtRows += R(`Viša tarifa 1 - VT (do ${t.tariff_vt_threshold} kWh)`, below.toFixed(0)+' kWh', t.tariff_vt1, below*t.tariff_vt1);
+    if(above>0) vtRows += R(`Viša tarifa 2 - VT (iznad ${t.tariff_vt_threshold} kWh)`, above.toFixed(0)+' kWh', t.tariff_vt2, above*t.tariff_vt2);
+  } else {
+    vtRows = R('Viša tarifa (VT)', netVT.toFixed(0)+' kWh', t.tariff_vt1, netVT*t.tariff_vt1);
+  }
+
+  let ntRows = '';
+  if(t.tariff_nt_threshold < 99999) {
+    const below = Math.min(netNT, t.tariff_nt_threshold);
+    const above = Math.max(0, netNT - t.tariff_nt_threshold);
+    if(below>0) ntRows += R(`Niža tarifa 1 - NT (do ${t.tariff_nt_threshold} kWh)`, below.toFixed(0)+' kWh', t.tariff_nt1, below*t.tariff_nt1);
+    if(above>0) ntRows += R(`Niža tarifa 2 - NT (iznad ${t.tariff_nt_threshold} kWh)`, above.toFixed(0)+' kWh', t.tariff_nt2, above*t.tariff_nt2);
+  } else {
+    ntRows = R('Niža tarifa (NT)', netNT.toFixed(0)+' kWh', t.tariff_nt1, netNT*t.tariff_nt1);
+  }
+
+  const solidarnaRow = t.solidarna_popust
+    ? `${R('Solidarna naknada',(netVT+netNT).toFixed(0)+' kWh',t.tariff_solidarna,(netVT+netNT)*t.tariff_solidarna)}
+       <tr class="bill-neg"><td>— Popust na solidarnu naknadu</td><td class="text-right text-mono">${(netVT+netNT).toFixed(0)} kWh</td><td class="text-right text-mono">${t.tariff_solidarna}</td><td class="text-right text-mono" style="color:var(--red)">-${((netVT+netNT)*t.tariff_solidarna).toFixed(4)} €</td></tr>`
+    : R('Solidarna naknada',(netVT+netNT).toFixed(0)+' kWh',t.tariff_solidarna,(netVT+netNT)*t.tariff_solidarna);
+
+  const tbody = document.getElementById('bill-tbody');
+  tbody.innerHTML = `
+    ${SEC('OBRAČUN OPSKRBE')}
+    ${vtRows}
+    ${ntRows}
+    ${solidarnaRow}
+    ${R('OIE naknada',(netVT+netNT).toFixed(0)+' kWh',t.tariff_oie,c.oie)}
+    ${R('Opskrbna naknada','1 mj','',t.tariff_opskrba)}
+    ${BOLD('Ukupno opskrba',c.opskrba)}
+    ${SEC('OBRAČUN MREŽE')}
+    ${R('Distribucija VT',netVT.toFixed(0)+' kWh',t.tariff_distrib_vt,netVT*t.tariff_distrib_vt)}
+    ${R('Distribucija NT',netNT.toFixed(0)+' kWh',t.tariff_distrib_nt,netNT*t.tariff_distrib_nt)}
+    ${R('Prijenos VT',netVT.toFixed(0)+' kWh',t.tariff_prij_vt,netVT*t.tariff_prij_vt)}
+    ${R('Prijenos NT',netNT.toFixed(0)+' kWh',t.tariff_prij_nt,netNT*t.tariff_prij_nt)}
+    ${R('Naknada mjerna usluga','1 mj','',t.tariff_mjerna)}
+    ${BOLD('Ukupno mreža',c.mreza)}
+    ${SEC('REKAPITULACIJA')}
+    ${R('Iznos bez PDV-a','','',c.subtotal)}
+    ${R(`PDV ${(s.pdv_rate*100).toFixed(0)}%`,'','',c.pdv)}
+    <tr class="bill-bold"><td colspan="3" style="font-size:1rem">UKUPNO ZA PLATITI</td><td class="text-right text-mono" style="color:var(--sun);font-size:1.1rem">${c.total.toFixed(2)} €</td></tr>
+    <tr><td colspan="4" style="padding-top:12px;font-size:.72rem;color:var(--dim);font-family:'DM Mono',monospace">Tarife: ${currentMonth >= '2026-01' ? 'od 1.1.2026' : 'do 31.12.2025'} • Netiranje: uvoz − solar po tarifi (VT=${netVT.toFixed(0)} kWh, NT=${netNT.toFixed(0)} kWh)</td></tr>
+  `;
+}
+
+// ============================================================
+// UVOZ - OVERVIEW
+// ============================================================
+function renderImportOverview() {
+  const bills = DB.get('bills', {});
+  const fs = DB.get('fusionsolar', {});
+  const months = Object.keys(bills).sort().reverse();
+  const el = document.getElementById('import-overview');
+  if(months.length===0) { el.innerHTML='Nema uvezenih podataka.'; return; }
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:.78rem">
+    <thead><tr style="color:var(--dim);font-family:'DM Mono',monospace;font-size:.65rem">
+      <th style="text-align:left;padding:0 10px 8px 0;border-bottom:1px solid var(--border)">Mjesec</th>
+      <th style="text-align:right;padding:0 10px 8px 0;border-bottom:1px solid var(--border)">Potr. VT</th>
+      <th style="text-align:right;padding:0 10px 8px 0;border-bottom:1px solid var(--border)">Potr. NT</th>
+      <th style="text-align:right;padding:0 10px 8px 0;border-bottom:1px solid var(--border)">Predano</th>
+      <th style="text-align:right;padding:0 10px 8px 0;border-bottom:1px solid var(--border)">FS Proiz.</th>
+      <th style="text-align:right;padding:0 0 8px 0;border-bottom:1px solid var(--border)">FS Direktno</th>
+    </tr></thead>
+    <tbody>${months.map(ym=>{
+      const b=bills[ym]||{};const f=fs[ym]||{};
+      return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03)">
+        <td style="padding:7px 10px 7px 0;font-weight:700">${ym}</td>
+        <td style="text-align:right;padding:7px 10px 7px 0;font-family:'DM Mono',monospace">${(b.consumptionVT||0).toFixed(1)}</td>
+        <td style="text-align:right;padding:7px 10px 7px 0;font-family:'DM Mono',monospace">${(b.consumptionNT||0).toFixed(1)}</td>
+        <td style="text-align:right;padding:7px 10px 7px 0;font-family:'DM Mono',monospace;color:var(--sun)">${((b.productionVT||0)+(b.productionNT||0)).toFixed(1)}</td>
+        <td style="text-align:right;padding:7px 10px 7px 0;font-family:'DM Mono',monospace;color:var(--green)">${f.productionTotal>0?f.productionTotal.toFixed(1):'—'}</td>
+        <td style="text-align:right;padding:7px 0;font-family:'DM Mono',monospace;color:var(--green)">${f.directConsumption>0?f.directConsumption.toFixed(1):'—'}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+// ============================================================
+// FUSIONSOLAR SAVE
+// ============================================================
+function saveFusionSolar() {
+  const ym = document.getElementById('fs-month').value;
+  const total = parseFloat(document.getElementById('fs-total').value)||0;
+  const direct = parseFloat(document.getElementById('fs-direct').value)||0;
+  const feed = parseFloat(document.getElementById('fs-feed').value)||0;
+  const note = document.getElementById('fs-note').value;
+  if(!ym) { alert('Odaberi mjesec!'); return; }
+  const fs = DB.get('fusionsolar', {});
+  fs[ym] = { productionTotal:total, directConsumption:direct, gridFeed:feed, note, updated:new Date().toISOString() };
+  DB.set('fusionsolar', fs);
+  const saved = document.getElementById('fs-saved');
+  saved.style.display='inline';
+  setTimeout(()=>saved.style.display='none',3000);
+  renderImportOverview();
+  renderDashboard();
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function loadSettings() {
+  const s = getSettings();
+  const t2026 = TARIFF_PERIODS[0];
+  document.getElementById('s-tariff-vt').value = t2026.tariff_vt1;
+  document.getElementById('s-tariff-nt').value = t2026.tariff_nt1;
+  document.getElementById('s-solidarna').value = t2026.tariff_solidarna;
+  document.getElementById('s-oie').value = t2026.tariff_oie;
+  document.getElementById('s-opskrba').value = t2026.tariff_opskrba;
+  document.getElementById('s-distrib-vt').value = t2026.tariff_distrib_vt;
+  document.getElementById('s-distrib-nt').value = t2026.tariff_distrib_nt;
+  document.getElementById('s-prij-vt').value = t2026.tariff_prij_vt;
+  document.getElementById('s-prij-nt').value = t2026.tariff_prij_nt;
+  document.getElementById('s-mjerna').value = t2026.tariff_mjerna;
+  document.getElementById('s-pdv').value = s.pdv_rate;
+  document.getElementById('s-kwp').value = s.kwp;
+  document.getElementById('s-year').value = s.install_year;
+  document.getElementById('s-cost').value = s.install_cost;
+  document.getElementById('s-vt-week').value = s.vt_weekday;
+  document.getElementById('s-vt-wknd').value = s.vt_weekend;
+}
+
+function saveSettings() {
+  // Ažuriraj tarife za 2026 iz postavki
+  TARIFF_PERIODS[0].tariff_vt1 = parseFloat(document.getElementById('s-tariff-vt').value);
+  TARIFF_PERIODS[0].tariff_nt1 = parseFloat(document.getElementById('s-tariff-nt').value);
+  TARIFF_PERIODS[0].tariff_solidarna = parseFloat(document.getElementById('s-solidarna').value);
+  TARIFF_PERIODS[0].tariff_oie = parseFloat(document.getElementById('s-oie').value);
+  TARIFF_PERIODS[0].tariff_opskrba = parseFloat(document.getElementById('s-opskrba').value);
+  TARIFF_PERIODS[0].tariff_distrib_vt = parseFloat(document.getElementById('s-distrib-vt').value);
+  TARIFF_PERIODS[0].tariff_distrib_nt = parseFloat(document.getElementById('s-distrib-nt').value);
+  TARIFF_PERIODS[0].tariff_prij_vt = parseFloat(document.getElementById('s-prij-vt').value);
+  TARIFF_PERIODS[0].tariff_prij_nt = parseFloat(document.getElementById('s-prij-nt').value);
+  TARIFF_PERIODS[0].tariff_mjerna = parseFloat(document.getElementById('s-mjerna').value);
+  DB.set('settings', {
+    pdv_rate: parseFloat(document.getElementById('s-pdv').value),
+    kwp: parseFloat(document.getElementById('s-kwp').value),
+    install_year: parseInt(document.getElementById('s-year').value),
+    install_cost: parseFloat(document.getElementById('s-cost').value),
+    vt_weekday: document.getElementById('s-vt-week').value,
+    vt_weekend: document.getElementById('s-vt-wknd').value,
+  });
+  // Recalc VT/NT with new schedule
+  recalcVtNt();
+  const el = document.getElementById('settings-saved');
+  el.style.display='inline';
+  setTimeout(()=>el.style.display='none',3000);
+  renderDashboard();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+// Set current month in FusionSolar form
+document.getElementById('fs-month').value = currentMonth;
+
+// Init render
+renderDashboard();
+document.getElementById('db-status').innerHTML = `● ${Object.keys(DB.get('bills',{})).length} mj. podataka`;
+
+
+
+
+// ============================================================
+// FUSION SOLAR XLSX PARSER
+// ============================================================
+function handleFsDrop(e) { e.preventDefault(); document.getElementById('fs-drop-zone').classList.remove('drag'); handleFsFiles(e.dataTransfer.files); }
+
+function handleFsFiles(files) {
+  const resultsEl = document.getElementById('fs-import-results');
+  resultsEl.innerHTML = '<div style="color:var(--sun);margin-top:8px">⟳ Čitam fajl...</div>';
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const result = parseFusionSolarXlsx(e.target.result, file.name);
+      resultsEl.innerHTML = `<div style="color:${result.success?'var(--green)':'var(--red)'};margin-top:8px">${result.message}</div>`;
+      if(result.success) renderSolar();
+    };
+    reader.readAsBinaryString(file);
+  });
+}
+
+function parseFusionSolarXlsx(binaryStr, filename) {
+  try {
+    if(typeof XLSX === 'undefined') return {success:false, message:'XLSX biblioteka nije učitana'};
+    
+    const wb = XLSX.read(binaryStr, {type: binaryStr instanceof ArrayBuffer ? 'array' : 'binary'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    
+    if(data.length < 3) return {success:false, message:'Fajl je prazan ili neispravan format'};
+    
+    // SheetJS može preskočiti prazne/merge redove - traži header u svim redovima
+    let headerRow = -1;
+    for(let i=0;i<Math.min(10,data.length);i++) {
+      // Header red sadrži 'Statistical Period' ili 'PV Yield' u nekom stupcu
+      const rowStr = data[i].map(c=>String(c||'')).join('|');
+      if(rowStr.includes('PV Yield') || rowStr.includes('Statistical Period')) { 
+        headerRow=i; break; 
+      }
+    }
+    if(headerRow<0) {
+      console.log('[SolarIQ] FS rows:', data.slice(0,5));
+      return {success:false, message:'Nije pronađen header row'};
+    }
+    console.log('[SolarIQ] FS header row:', headerRow, 'val:', data[headerRow]?.[0]);
+    
+    const headers = data[headerRow].map(h=>String(h).trim());
+    console.log('[FS debug] headers:', headers);
+    const colPV = headers.findIndex(h=>h.includes('PV Yield'));
+    console.log('[FS debug] colPV:', colPV, 'colExport:', headers.findIndex(h=>h==='Export (kWh)'));
+    const colExport = headers.findIndex(h=>h==='Export (kWh)');
+    const colImport = headers.findIndex(h=>h==='Import (kWh)');
+    const colSelfCons = headers.findIndex(h=>h.includes('Self-consumption') && h.includes('kWh') && !h.includes('%'));
+    const colConsumption = headers.findIndex(h=>h==='Consumption (kWh)');
+    
+    const fs = DB.get('fusionsolar', {});
+    let imported = 0, skipped = 0;
+    const byMonth = {};
+    
+    for(let i=headerRow+1; i<data.length; i++) {
+      const row = data[i];
+      const period = String(row[0]||'').trim();
+      if(!period || period.length < 8) { skipped++; continue; }
+      
+      const dateParts = period.split('-');
+      if(dateParts.length < 3) { skipped++; continue; }
+      const ym = `${dateParts[0]}-${dateParts[1]}`;
+      
+      if(!byMonth[ym]) byMonth[ym] = {pvYield:0, export:0, import:0, selfCons:0, consumption:0, days:0};
+      byMonth[ym].pvYield += parseFloat(row[colPV])||0;
+      byMonth[ym].export += parseFloat(row[colExport])||0;
+      byMonth[ym].import += parseFloat(row[colImport])||0;
+      byMonth[ym].selfCons += colSelfCons>=0 ? (parseFloat(row[colSelfCons])||0) : 0;
+      byMonth[ym].consumption += colConsumption>=0 ? (parseFloat(row[colConsumption])||0) : 0;
+      byMonth[ym].days++;
+    }
+    
+    for(const [ym, d] of Object.entries(byMonth)) {
+      const directConsumption = d.selfCons > 0 ? d.selfCons : Math.max(0, d.pvYield - d.export);
+      
+      // Koeficijent VT iz HEP podataka
+      const bills = DB.get('bills', {});
+      const bill = bills[ym] || {};
+      const totalProd = (bill.productionVT||0) + (bill.productionNT||0);
+      const vtRatio = totalProd > 0 ? (bill.productionVT||0) / totalProd : null;
+      
+      fs[ym] = {
+        productionTotal: Math.round(d.pvYield*100)/100,
+        directConsumption: Math.round(directConsumption*100)/100,
+        gridFeed: Math.round(d.export*100)/100,
+        gridImport: Math.round(d.import*100)/100,
+        selfConsumptionRate: d.pvYield > 0 ? Math.round(directConsumption/d.pvYield*10000)/100 : 0,
+        vtRatio: vtRatio,
+        consumption: Math.round(d.consumption*100)/100,
+        days: d.days,
+        source: 'xlsx',
+        updated: new Date().toISOString()
+      };
+      imported++;
+    }
+    
+    DB.set('fusionsolar', fs);
+    return {success:true, message:`✓ Uvezeno ${imported} mjeseci iz Fusion Solar (${filename})`};
+  } catch(e) {
+    console.error('FS parse error:', e);
+    return {success:false, message:`Greška: ${e.message}`};
+  }
+}
+
+// ============================================================
+// FUSION SOLAR AUTO-LOAD
+// ============================================================
+async function loadFusionSolarData() {
+  try {
+    const res = await fetch(`${SERVER}/api/fs-parsed`);
+    const data = await res.json();
+    if (!data.ok || Object.keys(data.podaci).length === 0) return;
+
+    // Uvijek overwriteaj s najnovijim podacima sa servera
+    const fs = {};
+    let imported = 0;
+    for (const [ym, d] of Object.entries(data.podaci)) {
+      const bills = DB.get('bills', {});
+      const bill = bills[ym] || {};
+      const totalProd = (bill.productionVT||0) + (bill.productionNT||0);
+      d.vtRatio = totalProd > 0 ? (bill.productionVT||0) / totalProd : null;
+      d.updated = new Date().toISOString();
+      fs[ym] = d;
+      imported++;
+    }
+    DB.set('fusionsolar', fs);
+    console.log(`[SolarIQ] Fusion Solar: uvezeno ${imported} mjeseci`);
+    renderDashboard();
+    renderFsDaily();
+    renderSolar();
+  } catch(e) {
+    console.log('[SolarIQ] FS server nije dostupan:', e.message);
+  }
+}
+
+// ============================================================
+// RENDER SOLAR VIEW
+// ============================================================
+let chartSolarMonthly = null;
+let chartSolarCompare = null;
+
+let fsDailyMonth = null;
+let chartFsDaily = null;
+
+function fsMonthPrev() {
+  const fs = DB.get('fusionsolar', {});
+  const months = Object.keys(fs).sort();
+  if (!months.length) return;
+  const idx = months.indexOf(fsDailyMonth);
+  if (idx > 0) { fsDailyMonth = months[idx-1]; renderFsDaily(); }
+}
+function fsMonthNext() {
+  const fs = DB.get('fusionsolar', {});
+  const months = Object.keys(fs).sort();
+  if (!months.length) return;
+  const idx = months.indexOf(fsDailyMonth);
+  if (idx < months.length-1) { fsDailyMonth = months[idx+1]; renderFsDaily(); }
+}
+
+function renderFsDaily() {
+  const fs = DB.get('fusionsolar', {});
+  const months = Object.keys(fs).sort();
+  if (!months.length) return;
+
+  if (!fsDailyMonth || !fs[fsDailyMonth]) fsDailyMonth = months[months.length-1];
+
+  const MONTHS_HR2 = ['Siječanj','Veljača','Ožujak','Travanj','Svibanj','Lipanj','Srpanj','Kolovoz','Rujan','Listopad','Studeni','Prosinac'];
+  const [y,m] = fsDailyMonth.split('-');
+  document.getElementById('fs-month-label').textContent = `${MONTHS_HR2[parseInt(m)-1]} ${y}`;
+
+  const d = fs[fsDailyMonth];
+  const fmtK = v => (v||0).toFixed(1) + ' kWh';
+  const fmtP = v => (v||0).toFixed(1) + ' %';
+
+  document.getElementById('fs-kpi-pv').textContent = fmtK(d.productionTotal);
+  document.getElementById('fs-kpi-direct').textContent = fmtK(d.directConsumption);
+  document.getElementById('fs-kpi-export').textContent = fmtK(d.gridFeed);
+  document.getElementById('fs-kpi-import').textContent = fmtK(d.gridImport);
+  document.getElementById('fs-mini-self').textContent = fmtP(d.selfConsumptionRate);
+  document.getElementById('fs-mini-peak').textContent = (d.peakPower||0).toFixed(2) + ' kW';
+  document.getElementById('fs-mini-cons').textContent = fmtK(d.consumption);
+  document.getElementById('fs-mini-co2').textContent = (d.co2||0).toFixed(3) + ' t';
+
+  // Dnevni graf - iz dailyData
+  const daily = d.daily || {};
+  const days = Object.keys(daily).sort();
+  if (days.length === 0) {
+    if (chartFsDaily) { chartFsDaily.destroy(); chartFsDaily = null; }
+    return;
+  }
+  const labels = days.map(dd => dd.slice(-2));
+  const pvDay = days.map(dd => +(daily[dd].pv||0).toFixed(2));
+  const directDay = days.map(dd => +(daily[dd].direct||0).toFixed(2));
+  const exportDay = days.map(dd => +(daily[dd].export||0).toFixed(2));
+  const importDay = days.map(dd => +(daily[dd].import||0).toFixed(2));
+
+  if (chartFsDaily) chartFsDaily.destroy();
+  chartFsDaily = new Chart(document.getElementById('chart-fs-daily'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'PV Prinos', data: pvDay, backgroundColor: 'rgba(245,166,35,0.8)', borderRadius: 4, maxBarThickness: 14 },
+        { label: 'Direktno', data: directDay, backgroundColor: 'rgba(0,229,176,0.8)', borderRadius: 4, maxBarThickness: 14 },
+        { label: 'Predano', data: exportDay, backgroundColor: 'rgba(74,158,255,0.8)', borderRadius: 4, maxBarThickness: 14 },
+        { label: 'Primljeno', data: importDay, backgroundColor: 'rgba(255,90,90,0.5)', borderRadius: 4, maxBarThickness: 14 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#7a9bc8', font:{ family:'DM Mono', size:11 } } } },
+      scales:{ x:{ ticks:{ color:'#7a9bc8', font:{ family:'DM Mono', size:10 } }, grid:{ color:'rgba(255,255,255,0.04)' } },
+               y:{ ticks:{ color:'#7a9bc8', font:{ family:'DM Mono', size:10 } }, grid:{ color:'rgba(255,255,255,0.04)' } } }
+    }
+  });
+}
+
+function renderSolar() {
+  const fs = DB.get('fusionsolar', {});
+  const bills = DB.get('bills', {});
+  const months = Object.keys(fs).sort();
+
+  if (months.length === 0) {
+    document.getElementById('solar-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--dim)">Nema Fusion Solar podataka</td></tr>';
+    document.getElementById('solar-totals').innerHTML = '';
+    return;
+  }
+
+  // Totals
+  let totalPV = 0, totalDirect = 0, totalFeed = 0;
+  months.forEach(ym => {
+    const d = fs[ym];
+    totalPV += d.productionTotal || 0;
+    totalDirect += d.directConsumption || 0;
+    totalFeed += d.gridFeed || 0;
+  });
+
+  document.getElementById('solar-totals').innerHTML = `
+    <div class="savings-card"><div class="savings-label">Ukupno PV prinos</div><div class="savings-value" style="color:var(--sun)">${totalPV.toFixed(1)} <span class="savings-unit">kWh</span></div></div>
+    <div class="savings-card"><div class="savings-label">Direktna potrošnja</div><div class="savings-value" style="color:var(--green)">${totalDirect.toFixed(1)} <span class="savings-unit">kWh</span></div></div>
+    <div class="savings-card"><div class="savings-label">Predano u mrežu</div><div class="savings-value" style="color:var(--blue)">${totalFeed.toFixed(1)} <span class="savings-unit">kWh</span></div></div>
+    <div class="savings-card"><div class="savings-label">Avg. samopokriće</div><div class="savings-value" style="color:var(--sun2)">${totalPV > 0 ? (totalDirect/totalPV*100).toFixed(1) : 0} <span class="savings-unit">%</span></div></div>
+  `;
+
+  // Chart - energija po mjesecima
+  const labels = months.map(m => m.slice(0,7));
+  const pvData = months.map(m => +(fs[m].productionTotal||0).toFixed(2));
+  const directData = months.map(m => +(fs[m].directConsumption||0).toFixed(2));
+  const feedData = months.map(m => +(fs[m].gridFeed||0).toFixed(2));
+
+  if (chartSolarMonthly) chartSolarMonthly.destroy();
+  chartSolarMonthly = new Chart(document.getElementById('chart-solar-monthly'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'PV Prinos', data: pvData, backgroundColor: 'rgba(245,166,35,0.7)' },
+        { label: 'Direktno', data: directData, backgroundColor: 'rgba(0,229,176,0.7)' },
+        { label: 'Predano', data: feedData, backgroundColor: 'rgba(74,158,255,0.7)' }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e8f0fe' } } }, scales: { x: { ticks: { color: '#7a9bc8' } }, y: { ticks: { color: '#7a9bc8' } } } }
+  });
+
+  // Chart - usporedba HEP vs FS
+  const hepFeed = months.map(m => {
+    const b = bills[m] || {};
+    return +((b.productionVT||0) + (b.productionNT||0)).toFixed(2);
+  });
+  const fsFeed = months.map(m => +(fs[m].gridFeed||0).toFixed(2));
+  const hepImport = months.map(m => {
+    const b = bills[m] || {};
+    return +((b.consumptionVT||0) + (b.consumptionNT||0)).toFixed(2);
+  });
+  const fsImport = months.map(m => +(fs[m].gridImport||0).toFixed(2));
+
+  if (chartSolarCompare) chartSolarCompare.destroy();
+  chartSolarCompare = new Chart(document.getElementById('chart-solar-compare'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Predano HEP (A-)', data: hepFeed, backgroundColor: 'rgba(74,158,255,0.7)' },
+        { label: 'Predano FS', data: fsFeed, backgroundColor: 'rgba(74,158,255,0.3)', borderColor: 'rgba(74,158,255,0.8)', borderWidth: 1 },
+        { label: 'Primljeno HEP (A+)', data: hepImport, backgroundColor: 'rgba(255,90,90,0.7)' },
+        { label: 'Primljeno FS', data: fsImport, backgroundColor: 'rgba(255,90,90,0.3)', borderColor: 'rgba(255,90,90,0.8)', borderWidth: 1 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e8f0fe' } } }, scales: { x: { ticks: { color: '#7a9bc8' } }, y: { ticks: { color: '#7a9bc8' } } } }
+  });
+
+  // Tablica
+  const tbody = document.getElementById('solar-tbody');
+  tbody.innerHTML = months.map(ym => {
+    const d = fs[ym];
+    const b = bills[ym] || {};
+    const hepFeedM = (b.productionVT||0) + (b.productionNT||0);
+    const diff = (d.gridFeed||0) - hepFeedM;
+    const selfRate = d.productionTotal > 0 ? (d.directConsumption||0)/d.productionTotal*100 : 0;
+    const vtRatio = d.vtRatio != null ? d.vtRatio * 100 : null;
+    const diffColor = Math.abs(diff) < 0.5 ? 'var(--green)' : diff > 0 ? 'var(--sun)' : 'var(--red)';
+    return `<tr>
+      <td>${ym}</td>
+      <td>${(d.productionTotal||0).toFixed(2)}</td>
+      <td>${(d.directConsumption||0).toFixed(2)}</td>
+      <td>${(d.gridFeed||0).toFixed(2)}</td>
+      <td>${hepFeedM.toFixed(2)}</td>
+      <td style="color:${diffColor}">${diff>=0?'+':''}${diff.toFixed(2)}</td>
+      <td>${selfRate.toFixed(1)}%</td>
+      <td>${vtRatio != null ? vtRatio.toFixed(1)+'%' : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// SERVER AUTO-SYNC (localhost:5000)
+// ============================================================
+const SERVER = 'http://localhost:5000';
+let syncInProgress = false;
+
+function setSyncStatus(msg, color) {
+  const el = document.getElementById('sync-status');
+  if (el) { el.textContent = msg; el.style.color = color || 'var(--dim)'; }
+}
+
+async function serverSync() {
+  if (syncInProgress) return;
+  syncInProgress = true;
+  setSyncStatus('⟳ Sinkroniziram...', 'var(--sun)');
+
+  try {
+    // 1. Pokreni sync (Playwright skida nove fajlove)
+    const syncRes = await fetch(`${SERVER}/api/sync`, { method: 'POST' });
+    const syncData = await syncRes.json();
+    if (!syncData.ok) throw new Error(syncData.greska);
+    
+    const noviCount = syncData.novi?.length || 0;
+    if (noviCount > 0) {
+      console.log('[SolarIQ] Novi fajlovi:', syncData.novi);
+    }
+
+    // 2. Učitaj sve podatke
+    await ucitajSvePodatke();
+    await loadFusionSolarData();
+
+    setSyncStatus(`✓ Sync ${new Date().toLocaleTimeString('hr', {hour:'2-digit',minute:'2-digit'})}`, 'var(--green)');
+    if (noviCount > 0) showSyncNotification(noviCount);
+
+  } catch(e) {
+    console.error('[SolarIQ] Sync greška:', e);
+    setSyncStatus('⚠ Server nije dostupan', 'var(--red)');
+  } finally {
+    syncInProgress = false;
+  }
+}
+
+async function ucitajSvePodatke() {
+  const res = await fetch(`${SERVER}/api/podaci`);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.greska);
+
+  // Obrisi tekući i prethodni mjesec prije uvoza (uvijek svježe)
+  const _now = new Date();
+  const _tekuci = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+  const _prevD = new Date(_now.getFullYear(), _now.getMonth()-1, 1);
+  const _prethodni = `${_prevD.getFullYear()}-${String(_prevD.getMonth()+1).padStart(2,'0')}`;
+  const _existing = DB.get('intervals', []);
+  DB.set('intervals', _existing.filter(r => {
+    const ym = r.date ? r.date.substring(0,7) : '';
+    return ym !== _tekuci && ym !== _prethodni;
+  }));
+
+  let imported = 0;
+  for (const fajl of data.fajlovi) {
+    try {
+      // Dekodiraj base64 -> tekst
+      const tekst = atob(fajl.sadrzaj);
+      const r = parseAndSaveHepFile(tekst, fajl.naziv);
+      if (r.success && r.message.includes('Uvezeno: 0') === false) {
+        imported++;
+      }
+    } catch(e) {
+      console.error('[SolarIQ] Greška uvoza', fajl.naziv, e);
+    }
+  }
+
+  if (imported > 0) {
+    renderDashboard();
+    document.getElementById('db-status').innerHTML = `● ${Object.keys(DB.get('bills',{})).length} mj. podataka`;
+  }
+  return imported;
+}
+
+function showSyncNotification(count) {
+  const n = document.createElement('div');
+  n.style.cssText = `
+    position:fixed; bottom:20px; right:20px; z-index:9999;
+    background:linear-gradient(135deg,#0d1a30,#122040);
+    border:1px solid rgba(0,229,176,0.4);
+    border-radius:12px; padding:12px 18px;
+    color:#00e5b0; font-size:.85rem; font-weight:600;
+    box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  `;
+  n.innerHTML = `☀️ Novo: ${count} fajl${count===1?'':'ova'} uvezeno`;
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 4000);
+}
+
+// Pokreni sync pri otvaranju
+serverSync();
+</script>
+</body>
+</html>

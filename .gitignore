@@ -1,0 +1,13 @@
+# Podaci (ne commitamo - sync ih dohvaća na serveru)
+hep_podaci/
+fs_podaci/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# OS
+.DS_Store
+Thumbs.db
