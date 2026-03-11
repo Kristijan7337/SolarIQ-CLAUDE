@@ -5,6 +5,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN playwright install chromium
 RUN playwright install-deps chromium
 COPY . .
-RUN mkdir -p /data/hep_podaci /data/fs_podaci
-ENV DATA_DIR=/data
+RUN mkdir -p /app/data/hep_podaci /app/data/fs_podaci
+ENV DATA_DIR=/app/data
 CMD ["python", "server.py"]
