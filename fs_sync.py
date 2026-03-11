@@ -87,11 +87,7 @@ def run():
 
         # ── NAVIGACIJA DO PLANT REPORT ──
         print("Navigiram do Plant Report...")
-        # Hover na Reports da se otvori dropdown
-        page.locator("a:has-text('Reports')").first.hover()
-        time.sleep(2)
-        # Klikni Plant Report po ID-u
-        page.locator("#pvmsPlantReport").click()
+        page.goto("https://uni001eu5.fusionsolar.huawei.com/uniportal/pvmswebsite/assets/build/cloud.html?app-id=smartpvms&instance-id=smartpvms&zone-id=region-1-43b6d703-7da9-49f0-8b84-048ff489273f#/view/station/NE=195805630/report")
         page.wait_for_load_state("networkidle")
         time.sleep(8)
         print(f"URL na Plant Report: {page.url}")
