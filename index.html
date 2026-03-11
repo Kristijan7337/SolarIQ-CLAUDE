@@ -201,10 +201,77 @@ nav { flex:1; padding:12px 8px; }
       <div class="nav-item" onclick="showPage('racun',this)"><span class="nav-icon">🧾</span> Račun</div>
       <div class="nav-item" onclick="showPage('postavke',this)"><span class="nav-icon">⚙️</span> Postavke</div>
     </nav>
-    <div style="padding:12px 16px;border-top:1px solid var(--border);font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace;">
-      <span id="db-status">● Učitavanje...</span><br><span id="sync-status" style="color:var(--dim)">⟳ Čekam server...</span>
+    <div style="padding:12px 16px;border-top:1px solid var(--border);">
+      <button onclick="openSyncModal()" style="width:100%;background:linear-gradient(135deg,rgba(245,166,35,0.15),rgba(245,166,35,0.08));border:1px solid rgba(245,166,35,0.3);color:var(--sun);padding:9px 12px;border-radius:11px;cursor:pointer;font-size:.82rem;font-weight:700;margin-bottom:8px;transition:all .15s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(245,166,35,0.25),rgba(245,166,35,0.15))'" onmouseout="this.style.background='linear-gradient(135deg,rgba(245,166,35,0.15),rgba(245,166,35,0.08))'">⟳ Sinkroniziraj</button>
+      <div style="font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace;">
+        <span id="db-status">● Učitavanje...</span><br><span id="sync-status" style="color:var(--dim)">⟳ Čekam server...</span>
+      </div>
     </div>
   </aside>
+
+  <!-- SYNC MODAL -->
+  <div id="sync-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+    <div style="background:#0d1a30;border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:28px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+        <div>
+          <div style="font-size:1.1rem;font-weight:800;letter-spacing:-.02em;">⟳ Sinkronizacija</div>
+          <div style="font-size:.72rem;color:var(--dim);font-family:'DM Mono',monospace;margin-top:2px;">Unesite podatke za prijavu</div>
+        </div>
+        <button onclick="closeSyncModal()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--dim);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;">✕</button>
+      </div>
+
+      <!-- HEP -->
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:28px;height:28px;background:rgba(74,158,255,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">⚡</div>
+          <span style="font-size:.82rem;font-weight:700;color:var(--blue);">HEP mjerenje</span>
+          <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;color:var(--dim);">
+            <input type="checkbox" id="sync-hep-enabled" checked style="accent-color:var(--blue);"> uključi
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace;margin-bottom:4px;">KORISNIK</div>
+            <input id="hep-user" type="text" placeholder="email@example.com" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:8px 10px;color:var(--text);font-size:.82rem;outline:none;font-family:'DM Mono',monospace;" onfocus="this.style.borderColor='rgba(74,158,255,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          </div>
+          <div>
+            <div style="font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace;margin-bottom:4px;">LOZINKA</div>
+            <input id="hep-pass" type="password" placeholder="••••••••" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:8px 10px;color:var(--text);font-size:.82rem;outline:none;font-family:'DM Mono',monospace;" onfocus="this.style.borderColor='rgba(74,158,255,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          </div>
+        </div>
+      </div>
+
+      <!-- FusionSolar -->
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:28px;height:28px;background:rgba(245,166,35,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;">☀️</div>
+          <span style="font-size:.82rem;font-weight:700;color:var(--sun);">Fusion Solar</span>
+          <label style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;color:var(--dim);">
+            <input type="checkbox" id="sync-fs-enabled" checked style="accent-color:var(--sun);"> uključi
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace;margin-bottom:4px;">KORISNIK</div>
+            <input id="fs-user" type="text" placeholder="email@example.com" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:8px 10px;color:var(--text);font-size:.82rem;outline:none;font-family:'DM Mono',monospace;" onfocus="this.style.borderColor='rgba(245,166,35,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          </div>
+          <div>
+            <div style="font-size:.68rem;color:var(--dim);font-family:'DM Mono',monospace;margin-bottom:4px;">LOZINKA</div>
+            <input id="fs-pass" type="password" placeholder="••••••••" style="width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:8px 10px;color:var(--text);font-size:.82rem;outline:none;font-family:'DM Mono',monospace;" onfocus="this.style.borderColor='rgba(245,166,35,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div id="sync-modal-status" style="display:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:.78rem;color:var(--dim);font-family:'DM Mono',monospace;min-height:38px;word-break:break-all;"></div>
+
+      <!-- Gumbi -->
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeSyncModal()" id="sync-cancel-btn" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--dim);padding:10px;border-radius:11px;cursor:pointer;font-size:.85rem;font-weight:600;">Odustani</button>
+        <button onclick="pokreniSync()" id="sync-start-btn" style="flex:2;background:linear-gradient(135deg,rgba(245,166,35,0.2),rgba(245,166,35,0.1));border:1px solid rgba(245,166,35,0.4);color:var(--sun);padding:10px;border-radius:11px;cursor:pointer;font-size:.85rem;font-weight:700;">⟳ Pokreni sinkronizaciju</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MAIN -->
   <div class="main">
@@ -1488,9 +1555,9 @@ function renderSolar() {
 }
 
 // ============================================================
-// SERVER AUTO-SYNC (localhost:5000)
+// SERVER AUTO-SYNC
 // ============================================================
-const SERVER = 'http://localhost:5000';
+const SERVER = window.location.origin;
 let syncInProgress = false;
 
 function setSyncStatus(msg, color) {
@@ -1498,34 +1565,135 @@ function setSyncStatus(msg, color) {
   if (el) { el.textContent = msg; el.style.color = color || 'var(--dim)'; }
 }
 
-async function serverSync() {
+// ── SYNC MODAL ──────────────────────────────────────────────
+function openSyncModal() {
+  const m = document.getElementById('sync-modal');
+  m.style.display = 'flex';
+  document.getElementById('sync-modal-status').style.display = 'none';
+  document.getElementById('sync-start-btn').disabled = false;
+  document.getElementById('sync-start-btn').textContent = '⟳ Pokreni sinkronizaciju';
+  document.getElementById('sync-cancel-btn').textContent = 'Odustani';
+}
+
+function closeSyncModal() {
   if (syncInProgress) return;
+  document.getElementById('sync-modal').style.display = 'none';
+}
+
+function setSyncModalStatus(msg, color) {
+  const el = document.getElementById('sync-modal-status');
+  el.style.display = 'block';
+  el.textContent = msg;
+  el.style.color = color || 'var(--dim)';
+}
+
+async function pollingStatus(expectedDone) {
+  return new Promise((resolve) => {
+    const interval = setInterval(async () => {
+      try {
+        const r = await fetch(`${SERVER}/api/sync_status`);
+        const d = await r.json();
+        setSyncModalStatus(d.poruka, d.ok === false ? 'var(--red)' : d.ok === true ? 'var(--green)' : 'var(--sun)');
+        setSyncStatus(d.poruka.substring(0, 40), d.ok === false ? 'var(--red)' : 'var(--sun)');
+        if (!d.running) {
+          clearInterval(interval);
+          resolve(d);
+        }
+      } catch(e) {
+        clearInterval(interval);
+        resolve({ ok: false, poruka: 'Greška spajanja' });
+      }
+    }, 1500);
+  });
+}
+
+async function pokreniSync() {
+  const hepEnabled = document.getElementById('sync-hep-enabled').checked;
+  const fsEnabled = document.getElementById('sync-fs-enabled').checked;
+  if (!hepEnabled && !fsEnabled) {
+    setSyncModalStatus('Odaberite barem jedan izvor.', 'var(--red)');
+    return;
+  }
+
+  const hepUser = document.getElementById('hep-user').value.trim();
+  const hepPass = document.getElementById('hep-pass').value.trim();
+  const fsUser = document.getElementById('fs-user').value.trim();
+  const fsPass = document.getElementById('fs-pass').value.trim();
+
+  if (hepEnabled && (!hepUser || !hepPass)) {
+    setSyncModalStatus('Unesite HEP korisničke podatke.', 'var(--red)');
+    return;
+  }
+  if (fsEnabled && (!fsUser || !fsPass)) {
+    setSyncModalStatus('Unesite Fusion Solar korisničke podatke.', 'var(--red)');
+    return;
+  }
+
   syncInProgress = true;
-  setSyncStatus('⟳ Sinkroniziram...', 'var(--sun)');
+  document.getElementById('sync-start-btn').disabled = true;
+  document.getElementById('sync-start-btn').textContent = '⏳ U tijeku...';
 
   try {
-    // 1. Pokreni sync (Playwright skida nove fajlove)
-    const syncRes = await fetch(`${SERVER}/api/sync`, { method: 'POST' });
-    const syncData = await syncRes.json();
-    if (!syncData.ok) throw new Error(syncData.greska);
-    
-    const noviCount = syncData.novi?.length || 0;
-    if (noviCount > 0) {
-      console.log('[SolarIQ] Novi fajlovi:', syncData.novi);
+    if (hepEnabled) {
+      setSyncModalStatus('⚡ Pokrećem HEP sinkronizaciju...', 'var(--blue)');
+      setSyncStatus('⟳ HEP sync...', 'var(--sun)');
+      const r = await fetch(`${SERVER}/api/sync_custom`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'hep', username: hepUser, password: hepPass })
+      });
+      const d = await r.json();
+      if (!d.ok) { setSyncModalStatus('❌ ' + d.poruka, 'var(--red)'); return; }
+      const result = await pollingStatus();
+      if (result.ok === false) { setSyncModalStatus(result.poruka, 'var(--red)'); return; }
     }
 
-    // 2. Učitaj sve podatke
+    if (fsEnabled) {
+      setSyncModalStatus('☀️ Pokrećem Fusion Solar sinkronizaciju...', 'var(--sun)');
+      setSyncStatus('⟳ FS sync...', 'var(--sun)');
+      const r = await fetch(`${SERVER}/api/sync_custom`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'fs', username: fsUser, password: fsPass })
+      });
+      const d = await r.json();
+      if (!d.ok) { setSyncModalStatus('❌ ' + d.poruka, 'var(--red)'); return; }
+      const result = await pollingStatus();
+      if (result.ok === false) { setSyncModalStatus(result.poruka, 'var(--red)'); return; }
+    }
+
+    setSyncModalStatus('✅ Sinkronizacija završena! Učitavam podatke...', 'var(--green)');
+    setSyncStatus('⟳ Učitavam...', 'var(--sun)');
     await ucitajSvePodatke();
     await loadFusionSolarData();
-
     setSyncStatus(`✓ Sync ${new Date().toLocaleTimeString('hr', {hour:'2-digit',minute:'2-digit'})}`, 'var(--green)');
-    if (noviCount > 0) showSyncNotification(noviCount);
+    document.getElementById('sync-cancel-btn').textContent = 'Zatvori';
 
   } catch(e) {
-    console.error('[SolarIQ] Sync greška:', e);
-    setSyncStatus('⚠ Server nije dostupan', 'var(--red)');
+    setSyncModalStatus('❌ Greška: ' + e.message, 'var(--red)');
+    setSyncStatus('⚠ Greška', 'var(--red)');
   } finally {
     syncInProgress = false;
+    document.getElementById('sync-start-btn').disabled = false;
+    document.getElementById('sync-start-btn').textContent = '⟳ Pokreni sinkronizaciju';
+  }
+}
+
+// Zatvori modal klikom na pozadinu
+document.getElementById('sync-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeSyncModal();
+});
+
+// ── INICIJALNO UČITAVANJE PODATAKA ──────────────────────────
+async function serverSync() {
+  if (syncInProgress) return;
+  setSyncStatus('⟳ Učitavam...', 'var(--sun)');
+  try {
+    await ucitajSvePodatke();
+    await loadFusionSolarData();
+    setSyncStatus(`✓ ${new Date().toLocaleTimeString('hr', {hour:'2-digit',minute:'2-digit'})}`, 'var(--green)');
+  } catch(e) {
+    setSyncStatus('⚠ Server nije dostupan', 'var(--red)');
   }
 }
 
