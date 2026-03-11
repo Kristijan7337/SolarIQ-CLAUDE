@@ -52,7 +52,7 @@ def skini_fajl(page, mjesec, smjer, smjer_naziv, putanja):
         return False
 
     try:
-        with page.expect_download(timeout=10000) as download_info:
+        with page.expect_download(timeout=30000) as download_info:
             page.get_by_role("button", name="export", exact=True).click()
             time.sleep(1)
             if zatvori_dialog(page):

@@ -55,7 +55,8 @@ def run():
     print(f"Nedostaju FS podaci za: {', '.join(missing)}")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        headless = os.environ.get('RENDER') == 'true' or os.environ.get('HEADLESS') == '1' or not os.environ.get('DISPLAY')
+        browser = p.chromium.launch(headless=headless)
         page = browser.new_context().new_page()
 
         # ── LOGIN ──
